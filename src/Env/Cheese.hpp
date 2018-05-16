@@ -1,0 +1,37 @@
+#ifndef CHEESE_HPP
+#define CHEESE_HPP
+#include "SimulatedEntity.hpp"
+#include <SFML/Graphics.hpp>
+
+class Cheese:public SimulatedEntity
+{
+
+public:
+    /*constructeur et déstructeur*/
+    Cheese(Vec2d position);
+
+    ~Cheese();
+
+    /*méthode qui décremente l'énergie du fromage d'une certaine quantité "qte"*/
+    Quantity provideEnergy(Quantity qte);
+
+    /*getter qui retourne la taille du fromage*/
+    double getRadius() const;
+
+    /*méthode qui vérifie si un fromage peut être mis dans une boîte*/
+    bool canBeConfinedIn(Box* boite) const;
+
+    /*méthodes qui vérifient si le fromage peut être mangé par une entité ou non*/
+    bool eatableBy(Mouse const*) const;
+
+    bool eatableBy(Cheese const*) const;
+
+    bool eatable(SimulatedEntity const* entity) const;
+
+protected:
+    sf::Texture texture_;
+
+
+};
+
+#endif

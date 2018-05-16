@@ -1,0 +1,106 @@
+#include "Mouse.hpp"
+//#include "SimulatedEntity.hpp"
+#include <Application.hpp>
+
+//----CONSTRUCTEUR----//
+Mouse::Mouse(Vec2d position)
+    : Animal(getAppConfig().mouse_energy_initial,
+             position,
+             getAppTexture(getAppConfig().mouse_texture_white),
+             getAppConfig().mouse_view_range,
+             getAppConfig().mouse_view_distance,
+             getAppConfig().mouse_mass
+            )
+{}
+//----DESTRUCTEUR----//
+Mouse::~Mouse()
+{
+    /*à chaque fois qu'une souris meurt, il faut qu'on reset la boîte comme n'étant plus occupée*/
+    if(box_!= nullptr) {
+        box_->reset();
+    }
+}
+//------------GETTERS--------------//
+
+double Mouse::getRadius() const
+{
+    return (0.5*getAppConfig().mouse_size);
+}
+
+double Mouse::getMaxSpeed()
+{
+    return getAppConfig().mouse_max_speed;
+}
+
+double Mouse::getViewRange()const
+{
+    return getAppConfig().mouse_view_range;
+}
+
+double Mouse::getViewDistance()const
+{
+    return getAppConfig().mouse_view_distance;
+}
+
+
+double Mouse::getMasse() const
+{
+    return getAppConfig().mouse_mass;
+}
+
+double Mouse::getLossFactor()
+{
+    return getAppConfig().mouse_energy_loss_factor;
+}
+
+/*méthode qui vérifie si une souris est morte*/
+bool Mouse::isdead() const
+{
+    /*une souris est considérée comme morte si son énergie est inférieure à zéro où si elle dépasse son seuil de longévité maximale*/
+    if ((this->energie_ <= 0.0) or (this->age_>= getAppConfig().mouse_longevity)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+/*méthode qui vérifie si une souris peut être confinée dans une boîte*/
+bool Mouse::canBeConfinedIn(Box* boite) const
+{
+    /*une souris peut être mise dans la boîte si la boîte ne contient pas d'autres souris*/
+    if(boite != nullptr) {
+        if(boite->isEmpty()) {
+            boite->addOccupant(); /*il faut donc marquer la boîte comme "occuppée" lorsqu'on rajoute une souris.*/
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+/*méthodes pour vérifier si une souris est mangeable par certaines entités*/
+bool Mouse::eatable(SimulatedEntity const* entity) const
+{
+    return entity->eatableBy(this);
+}
+/*une souris n'est pas mangeable par une souris*/
+bool Mouse::eatableBy(Mouse const*) const
+{
+    return false;
+}
+/*une souris n'est pas mangeable par un fromage*/
+bool Mouse::eatableBy(Cheese const*) const
+{
+    return false;
+}
+
+/*retourne une quantité d'énergie que fait perdre au fromage la souris à chaque fois qu'elle en mange un*/
+Quantity Mouse::FoodQuantity()
+{
+    return getAppConfig().mouse_energy_bite;
+}
+/*cette méthode n'est pas redéfinie ici, elle est surtout utile pour le fromage; chez ce dernier cette méthode décremente son énergie d'une certaine quantité*/
+Quantity Mouse::provideEnergy(Quantity qte)
+{}

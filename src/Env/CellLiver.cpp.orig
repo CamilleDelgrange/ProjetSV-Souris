@@ -1,0 +1,5 @@
+#include "CellLiver.hpp"
+
+CellLiver::CellLiver(CellHandler* cellHandler_)
+: CellOrgan(cellHandler_)
+{}

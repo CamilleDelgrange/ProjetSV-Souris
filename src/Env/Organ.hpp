@@ -1,0 +1,100 @@
+#ifndef ORGAN_HPP
+#define ORGAN_HPP
+#include "CellHandler.hpp"
+#include <SFML/Graphics.hpp>
+#include <Utility/Vertex.hpp>
+#include <algorithm>
+#include <Types.hpp>
+#include <Random/Random.hpp>
+#include <cmath>
+
+using namespace std;
+
+class Organ
+{
+
+private:
+    int nbCells_; //nombre de cases par ligne
+
+    float cellSize_; //taille graphique de chaque cellule
+
+    sf::RenderTexture renderingCache_; //attribut représentant l'image associée à l'organe pour son dessin
+
+    vector<vector<CellHandler*>>cellHandlers_; //tableau de cellHandlers
+
+    vector <sf::Vertex> bloodVertexes_; //l'ensemble des sommets représentant des cellules sanguines
+
+    vector <sf::Vertex> liverVertexes_; //l'ensemble des sommets représentant des cellules hépatiques
+
+    vector<CellCoord> StartPointRight_;
+
+    vector<CellCoord> StartPointLeft_;
+
+
+public:
+    /*constructeur*/
+    Organ(bool generation);
+
+    virtual ~Organ();
+
+    /*méthode qui fait évoluer un organe au cours du temps*/
+    void update();
+
+    /*méthode qui dessine l'organe*/
+    void drawOn(sf::RenderTarget& targetWindow);
+
+    /*des getters retournant la largeur et la hauteur graphiques associées à la vue interne*/
+    double getWidth()const;
+
+    double getHeight()const;
+
+    /*méthode qui met à jour la représentation de l'organe*/
+    void updateRepresentation(bool updateOrgan = true);
+
+    //retourne true si coordonnees représente une case en dehors de la grille et false sinon.
+    bool isOut(CellCoord coordonnees);
+
+    //trouve la case de la grille contenant le point pos
+    virtual CellCoord toCellCoord(Vec2d const& pos) const;
+
+    void drawRepresentation();
+
+    enum class Kind : short
+    {
+        ECM, Liver, Artery, Capillary
+    };
+
+    void generateStartPoint();
+
+    //update les couches cellulaires en fonction de leur type
+    virtual void updateRepresentationAt(const CellCoord& cellCoord);
+
+protected:
+    /*méthode qui initialise le nombre de case par ligne et la taille de chaque cellule*/
+    void reloadConfig();
+
+    /*méthode qui nitialise la repésentation associée au tableau en fonction de la grille*/
+    void reloadCacheStructure();
+
+    /*crée le foie*/
+    void createLiver();
+
+    /*crée le réseau sangin*/
+    void createBloodSystem(bool generateCapillaries = true);
+
+    /*méthode qui génère le contenu d'un organe*/
+    virtual void generate();
+
+    //dote le CellHandler à la position pos d'une cellule du type approprié selon la valeur de kind.
+    virtual void updateCellHandler(const CellCoord& pos, Kind kind);
+    
+    virtual void generateArtery(); //générer l'artère
+
+    virtual void generateCapillaryOneStep(CellCoord &current_position, const CellCoord& dir, int& nbCells, const int& maxLength); //faire croître un capillaire
+
+    virtual void generateCapillaryFromPosition(CellCoord& current_position, CellCoord dir); //génère un capillaire entier
+    
+
+};
+
+#endif

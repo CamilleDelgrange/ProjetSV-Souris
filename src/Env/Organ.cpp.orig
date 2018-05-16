@@ -1,0 +1,246 @@
+#include "Organ.hpp"
+#include <SFML/Graphics.hpp>
+#include <Application.hpp>
+ 
+using namespace std;
+ 
+//----CONSTRUCTEUR----//
+Organ::Organ(bool generation)
+{
+    /*générer, à la demande, des organes vides de contenu ou doté d'un contenu*/
+    if (generation==true) { generate();}  
+}
+ 
+//----DESTRUCTEUR----//
+Organ::~Organ()
+{
+    for (int i = 0; i < nbCells_; ++i)
+    {
+        for (int j = 0; j < nbCells_; ++j)
+        {
+            delete cellHandlers_[i][j]; //si l'organe disparait, on gère la disparition des strates
+            cellHandlers_[i][j] = nullptr;
+        }
+    }
+    cellHandlers_.clear();
+}
+ 
+/*méthode qui fait évoluer un organe au cours du temps*/
+void Organ::update()
+{
+    updateRepresentation(true);
+}
+ 
+/*méthode qui dessine l'organe*/
+void Organ::drawOn(sf::RenderTarget& targetWindow)
+{
+    sf::Sprite image(renderingCache_.getTexture()); // transforme l'image en texture
+    targetWindow.draw(image); // affiche la texture 
+}
+ 
+/*des getters retournant la largeur et la hauteur graphiques associées à la vue interne*/
+double Organ::getWidth()const
+{
+    return getAppConfig().simulation_organ_size;
+}
+ 
+double Organ::getHeight()const
+{
+    return getAppConfig().simulation_organ_size;
+}
+ 
+/*méthode qui initialise le nombre de case par ligne et la taille de chaque cellule*/
+void Organ::reloadConfig()
+{
+    nbCells_= getAppConfig().simulation_organ_nbCells;  //initialiser le nombre de cellules par ligne
+    cellSize_=getWidth()/nbCells_; //initialiser la taille graphique de chaque cellule
+
+    for(int i(0); i < nbCells_; ++i)
+    {
+        cellHandlers_.push_back(std::vector<CellHandler*>(0));
+        for (int j = 0; j < nbCells_; ++j)
+        {
+            CellCoord coord(i, j);
+            cellHandlers_[i].push_back(new CellHandler(coord, this));
+        }
+    }
+
+}
+ 
+/*méthode qui initialise la repésentation associée au tableau en fonction de la grille*/
+void Organ::reloadCacheStructure()
+{
+    unsigned int horizontalSize(nbCells_*cellSize_);
+    unsigned int verticalSize(horizontalSize);
+    renderingCache_.create(horizontalSize, verticalSize); 
+    /*initialiser l'attribut renderingCache_ à la taille que représente son image*/
+    /*initialiser bloodVertexes_ et liverVertexes_ avec le même ensemble de sommets, 
+    celui correspondant aux sommets de toutes les cases de la grille. */
+    bloodVertexes_ = generateVertexes(getAppConfig().simulation_organ["textures"], nbCells_, cellSize_);
+
+    liverVertexes_ = generateVertexes(getAppConfig().simulation_organ["textures"], nbCells_, cellSize_);
+}
+ 
+/*crée le foie*/
+void Organ::createLiver()
+{}
+ 
+/*crée le réseau sangin*/
+void Organ::createBloodSystem()
+{}
+ 
+/*méthode qui met à jour la représentation de l'organe*/
+void Organ::updateRepresentation(bool updateOrgan) 
+{
+    if(updateOrgan)
+    {
+        /*efface l'image renderingCache_ en lui donnant un fond tout rose*/
+        renderingCache_.clear(sf::Color(223,196,176));
+        //dessiner les carrés texturés
+        drawRepresentation();
+        for (int i = 0; i < nbCells_; ++i)
+        {
+            for (int j = 0; j < nbCells_; ++j)
+            {
+                updateRepresentationAt();
+            }
+        }
+        renderingCache_.display();
+    } else {
+        /*efface l'image renderingCache_ en lui donnant un fond tout rose*/
+        renderingCache_.clear(sf::Color(223,196,176));
+        //dessiner les carrés texturés
+        drawRepresentation();
+        renderingCache_.display();
+    }
+}
+ 
+/*méthode qui génère le contenu d'un organe; cette méthode utilise les
+ * cinq fonctions que l'ont vient de définir, suivant un ordre précis.*/   
+void Organ::generate()
+{
+    reloadConfig(); //1. on initialise nos attributs
+    reloadCacheStructure(); //2. on initialise la représentation 
+    //createLiver();//3. on crée le foie
+    //createBloodSystem();//4. on crée le réseau sanguin
+    //updateRepresentation();//5. on met à jour la représentation
+     
+}
+
+bool Organ::isOut(CellCoord cell)
+{
+    if(cell.x >= getWidth() or cell.y >= getHeight()) {
+        return true;
+    } else if((cell.x < 0 and cell.y < 0) or (cell.x <0 or cell.y < 0)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+CellCoord Organ::toCellCoord(Vec2d const& pos) const
+{
+    //Find the cell to which belong position, and return position
+    return vec2dToCellCoord(pos, getWidth(), getHeight(), cellSize_);
+}
+
+void Organ::updateRepresentationAt(const CellCoord& cellCoord)
+{
+    vector<size_t> indexes = indexesForCellVertexes(cellCoord.x, cellCoord.y, nbCells_);
+
+    for(size_t i(0); i < indexes.size(); ++i)
+    {
+        liverVertexes_[indexes[i]].color.a = 0;
+        bloodVertexes_[indexes[i]].color.a = 0;
+    }
+
+    if(cellHandlers_[cellCoord.x][cellCoord.y]->hasBlood()) //si le cellHandler contient une cellule sanguine-> rendre visible le bloodVertexes_
+    {
+        for(size_t i(0); i < indexes.size(); ++i)
+        {
+            liverVertexes_[indexes[i]].color.a = 0;
+            bloodVertexes_[indexes[i]].color.a = 255;
+        }
+
+    } else if(cellHandlers_[cellCoord.x][cellCoord.y]->hasLiver()) //si le cellHandler contient une cellule hépatique-> rendre visible le liverVertexes_
+    {
+        for(size_t i(0); i < indexes.size(); ++i)
+        {
+            liverVertexes_[indexes[i]].color.a = 255;
+            bloodVertexes_[indexes[i]].color.a = 0;
+        }
+    }
+
+}
+
+
+void Organ::drawRepresentation()
+{
+    //dessin d'un bloodVertexes_
+    sf::RenderStates rs;
+    auto textures = getAppConfig().simulation_organ["textures"];
+    rs.texture = &getAppTexture(textures["blood"].toString()); // ici pour la texture liée une cellule sanguine
+    
+    // nous dessinons sur l'image associée à Organ
+    // et non pas directement dans la fenêtre:
+
+    renderingCache_.draw(bloodVertexes_.data(), bloodVertexes_.size(), sf::Quads, rs); 
+
+    //dessin d'un liverVertexes_
+    sf::RenderStates rs1;
+    auto textureRs1 = getAppConfig().simulation_organ["textures"];
+    rs1.texture = &getAppTexture(textureRs1["liver"].toString()); // ici pour la texture liée une cellule sanguine
+    renderingCache_.draw(liverVertexes_.data(), liverVertexes_.size(), sf::Quads, rs1); 
+}
+
+void Organ::updateCellHandler(const CellCoord& pos, Kind kind)
+{
+    switch(kind)
+    {
+        case Organ::Kind::ECM :
+        cellHandlers_[pos.x][pos.y]->setECM();
+        break;
+        case Organ::Kind::Liver :
+        cellHandlers_[pos.x][pos.y]->setLiver();
+        break;
+        case Organ::Kind::Artery :
+        cellHandlers_[pos.x][pos.y]->setBlood(ARTERY);
+        break;
+        case Organ::Kind::Capillary :
+        cellHandlers_[pos.x][pos.y]->setBlood(CAPILLARY);
+        break;
+    }
+}
+/*
+void Organ::generateArtery()
+{
+    int SIZE_ARTERY(max(0.3*nbCells_, 1));
+    for(int i= nbCells_/2; i <= SIZE_ARTERY+ (nbCells_/2); ++i)
+    {
+        for(int j=0, j <nbCells_; ++j)
+        {
+            CellCoord positionArtery({i, j});
+            updateCellHandler(positionArtery, ARTERY);
+        }
+    }
+}
+
+
+CellCoord Organ::generateCapillaryOneStep(CellCoord &current_position, const CellCoord& dir, int& nbCells_, const int& maxLength)
+{
+    if(nbCells != maxLength and current_position.y > getAppConfig().blood_creation_start) and not(isOut(current_position))
+    {
+        CellCoord nouvelle_position(current_position + dir);
+        //cellHandlers_[current_position]=cellHandlers_[nouvelle_position];
+        ++nbCells_;
+    }
+    return nouvelle_position;
+} 
+
+void Organ::generateCapillaryFromPosition(CellCoord& current_position, CellCoord dir)
+{
+    
+
+
+}
+*/

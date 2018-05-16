@@ -1,0 +1,19 @@
+Projet SV 2018-L.DELACOMBAZ-C.DELGRANGE
+Partie 1:
+Classe Collider :
+
+Q1.1 : On évite une duplication de code dans le fichier <Collider.cpp> en réutilisant les méthodes isColliding et isPointInside dans les opérateurs, elles jouent en fait le même rôle.
+
+Q1.2 : Pour les 2 opérateurs "|" et ">", on choisit une surcharge externe de façon à comparer 2 instances courantes pour "|" et une instance courante avec un point quelconque dans ">". La surcharge externe permet aussi d'intervertir les arguments.
+
+Q1.3 : Les arguments de chaque méthode de type bool et des 2 opérateurs sont passés par référence constante car ils ne sont pas modifiés dans les méthodes.
+
+Q1.4 : Les méthodes getters, isColliding et isPointInside sont à déclarer comme const. En effet, ce sont des prédicats, c'est-à-dire qu'il faut indiquer au compilateur qu'on ne modifie pas l'état de l'objet à 
+l'intérieur de cette méthode. Cela rajoute une information à usage externe et interne et permet une meilleure optimisation.
+
+Classe Substance :
+Q1.5 : Dès lors qu'on ne modifie pas un argument au sein d'une fonction, on le déclare en référence constante pour une question d'optimisation
+
+Q1.6 : Dès lors qu'une fonction ne modifie pas l'état de ses arguments, on l'indique comme const, c'est le cas des getters, des opérateurs de comparaison et de l'opérateur [] ainsi que de isNull par exemple.
+
+Q2.1 : 

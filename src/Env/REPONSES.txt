@@ -1,0 +1,107 @@
+Projet SV 2018-L.DELACOMBAZ-C.DELGRANGE
+Partie 1:
+Classe Collider :
+
+Q1.1 :
+On évite une duplication de code dans le fichier <Collider.cpp> en réutilisant les méthodes isColliding et isPointInside dans les opérateurs, elles jouent en fait le même rôle.
+
+Q1.2 :
+Pour les 2 opérateurs "|" et ">", on choisit une surcharge externe de façon à comparer 2 instances courantes pour "|" et une instance courante avec un point quelconque dans ">". La surcharge externe permet aussi d'intervertir les arguments.
+
+Q1.3 : Les arguments de chaque méthode de type bool et des 2 opérateurs sont passés par référence constante car ils ne sont pas modifiés dans les méthodes.
+
+Q1.4 : Les méthodes getters, isColliding et isPointInside sont à déclarer comme const. En effet, ce sont des prédicats, c'est-à-dire qu'il faut indiquer au compilateur qu'on ne modifie pas l'état de l'objet à
+l'intérieur de cette méthode. Cela rajoute une information à usage externe et interne et permet une meilleure optimisation.
+
+Classe Substance :
+Q1.5 : Dès lors qu'on ne modifie pas un argument au sein d'une fonction, on le déclare en référence constante pour une question d'optimisation
+
+Q1.6 :
+Dès lors qu'une fonction ne modifie pas l'état de ses arguments, on l'indique comme const, c'est le cas des getters, des opérateurs de comparaison et de l'opérateur [] ainsi que de isNull par exemple.
+
+Q2.1 :
+
+
+Q3.1 : On met & après auto dans la boucle réalisant les update parce qu'on modifie l'âge de l'entité en fonction du temps. Lorsqu'on dit que l'on met à jour les entites, on met à jour leur age, energie et position, ils sont donc modifies et par raison d'optimisation, on préfère utiliser des références plutot que de faire des copies volumineuses.
+
+Q3.2 : On utilise une collection de pointeurs car on doit agir sur l'instance d'origine et non pas sur une copie de classe (sinon on ne peut pas appeler les méthodes virtuelles cf résolution dynamique des liens)
+
+Q3.3 : On doit retoucher update, drawOn et ~SimulatedEntity en les déclarant comme virtual et en les redéfinissant par la suite dans les sous-classes de SimulatedEntity pour exécuter la méthode du type réel de l'instance spécifique.
+
+Q3.4 :
+Tout d'abord, pour que les entites disparaissent proprement, on itère sur les entités puis si elles ne sont pas à nullptr, on les supprime. Ensuite, on vide le tableau d'entites. Ensuite, dans le destructeur du lab, on appelle reset() et destroyBoxes() (qui supprime les boites puis vide le lab)
+pour détruire les boites et les entites.
+
+Q3.5 :
+on redéfinit getCenter() comme étant la position de l'entite (attribut) et on retourne donc un Vec2d.
+
+Q3.6 : ????
+
+Q3.7 : On définit un attribut de type sf::Texture dans SimulatedEntity, Mouse et Cheese, et on initialise l'attribut texture_ de SimulatedEntity à (sf::Texture texture) dans son constructeur.
+Enfin on appelle le constructeur de Mouse et Cheese avec leur texture prédéfinie getAppTexture(getAppConfig().cheese_texture) et getAppTexture(getAppConfig().mouse_texture_white).
+
+Q3.8 :
+La méthode isDead(), qui teste si une entité est morte, est définie comme virtuelle car elle va être redéfinie dans Mouse. La méthode CanBeConfinedIn(Box* boite) est virtuelle pure dans SimulatedEntity car elle est redéfinie dans Mouse de telle sorte à ce qu'une seule souris ne puisse être créée dans une boite tandis que le fromage seulement si la boite existe.
+
+Q3.9 : Dans addEntity(), une fois que l'on a rajouté l'entité au tableau d'entites et affecté son attribut boite à celle qui lui correspond, on ajuste sa position.
+
+Q3.10 :
+Dans la fonction update de Animal, si l'état est à WANDERING (case WANDERING), on affecte son attribut velocity_ à getMaxSpeed().
+
+Q3.11 : On appelle la fonction update de l'entité dans Animal, avant toute opération :
+SimulatedEntity::update(dt);
+
+Q3.12 :
+Pour gérer la rotation de l'animal s'il est en collision avec un des murs du laboratoire, on crée une méthode bool Animal::TestCollision(Vec2d newP);
+qui nous retourne true s'il y a eu collision
+avec un des murs du laboratoire. Ensuite, on teste s'il y a eu collision dans la fonction update de Animal et on affecte à son attribut orientation de type Angle (-getHeading()).angle().
+
+Q3.13 :
+On définit une constante "limit" dans Config et dans appX.json à laquelle on affecte une certaine valeur. Puis on écrit :
+
+if(energie_ < getAppConfig().mouse_energy_limit)
+{
+    return (getAppConfig().mouse_max_speed/2);
+} else
+{
+    return getAppConfig().mouse_max_speed;
+}
+
+Q3. 14 :
+Tester le type des objets à l'exécution est potentiellement nocif car si l'on veut utiliser des objets d'autres types, on ne peut plus.
+
+Q3.15 : Les getters sont des méthodes publiques et plus accessibles que des attributs de la classe qui sont privées.
+
+Q3.16 : Tout d'abord, on défini une méthode Quantity FoodQuanttiy() en virtuelle pure dans Animal, que l'on redéfini dans Mouse qui retourne combien l'animal mange à chaque bouchée.
+Ensuite, on ajoute à Animal un attribut TargetFood_ (qui est la cible de nourriture en vue) auquel on affecte ce que retourne la fonction FindTargetInSight(), c'est-à-dire, la cible en vue de l'animal.
+Enfin, dans la fonction update de Animal, au niveau du case FEEDING, on incrémente l'énergie de l'animal de FoodQuantity()*getAppConfig().animal_meal_retention et si la cible n'est pas un pointeur nul,
+    on utilise la fonction provideEnergy de Cheese, qui va décrémenter son énergie de FoodQuantity(). Si l'énergie du fromage est inférieur à 0, on met le pointeur TargetFood à nullptr.
+
+    Q3.17 :
+Pour éviter de donner un accès public à toutes les entités simulées depuis Lab, on a créé une fonction FindTargetInSight(Animal* animal) qui retourne l'entite dans le champ de vision de la souris
+la plus proche et mangeable par elle. Ainsi, on créée un attribut dans Animal qui correspond à sa cible de nourriture et on lui affecte ce que retourne cette fonction. On peut donc ensuite utiliser cet attribut
+et faire avancer la souris vers lui grâce à sa force que l'on a notamment calculé en accédant aux attributs de l'entité retournée par cette fonction. (et en utilisant getAppEnv()).
+On teste bien sur ensuite dans updateState, les conditions pour que l'animal se mette dans les différents états.
+
+Q3.18 :
+Dans UpdateState, on va donc tout d'abord affecter à TargetFood sa bonne valeur comme expliqué précédemment, puis si ce n'est pas un pointeur nul, on teste s'il est rassasié. Si ce n'est pas le cas, l'animal passe en
+FOOD_IN_SIGHT (on a déjà testé dans FindTargetInSight si la cible était dans le champ de vision de l'animal.
+Ensuite, on teste si l'animal est en collision avec la cible et si son énergie est en dessous du seuil de satiété maximal. Si c'est le cas, l'animal passe en FEEDING. Sinon, l'animal est toujours en
+WANDERING.
+
+Q4.4 :
+Le constructeur de CellHandler appelle le constructeur de cellECM avec this lorsqu'il alloue une cellECM dynamiquement.
+
+Q4.5 : Pour éviter les fuites de mémoire, le destructeur de CellOrgan doit delete ses attributs substance_ et cellHandler_ que l'on vient d'allouer dynamiquement, il les met ensuite à nullptr.
+
+Q4.6 : Le destructeur d'un CellHandler doit delete ses attributs et les mettre à nullptr (car ils ont été alloués dynamiquement via les setters)
+
+Q4.7 :
+Pour permettre le codage de updateSubstance, on ajoute une méthode addSubstance à la classe CellECM qui va ajouter la substance à son attribut substance_ via l'opérateur +=. On appelle ensuite sur l'attribut cellECM_ la fonction addSubstance avec la substance passée en paramètre dans updateSubstance().
+
+Q4.8 :
+On définit une méthode getQuantity(SubstanceId id) comme virtuelle pure dans CellOrgan que l'on redéfinit dans CellECM, CellBlood et CellLiver et elles vont toutes trois retourner (*substance_)[id]. Puis, on appelle sur chaque attribut de cellules dans les getters de CellHandler ces getQuantity[id].
+
+Q4.9 :
+
+

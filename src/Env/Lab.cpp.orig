@@ -1,0 +1,266 @@
+#include "Lab.hpp"
+#include <SFML/Graphics.hpp>
+#include <Application.hpp>
+#include "Cheese.hpp"
+#include "Mouse.hpp"
+#include "Animal.hpp"
+#include <algorithm> 
+using namespace std;
+
+Lab::Lab()
+{
+	entites_.clear();
+	animaux_.clear();
+	fromages_.clear();
+	makeBoxes(getAppConfig().simulation_lab_nb_boxes);
+}
+
+Lab::~Lab()
+{
+	reset();
+	destroyBoxes();
+}
+
+void Lab::destroyBoxes()
+{
+	for (auto lignes:lab_) {
+		for (auto boites:lignes)
+		{
+			delete boites;
+		}
+	}
+	lab_.clear();
+}
+
+void Lab::update(sf::Time dt)
+{
+	for(auto& entite : entites_)
+	{
+		if (entite != nullptr) {
+			entite->update(dt); //mettre à jour le Lab, c'est mettre à jour chacune de ses entites
+			if(entite->isdead())
+			{
+				for(auto& animal : animaux_)
+				{
+					if(entite == animal)
+					{
+
+						animal = nullptr;
+					}
+				}
+				for(auto& fromage : fromages_)
+				{
+					if(entite == fromage)
+					{
+						fromage = nullptr;
+					}
+				}
+				delete entite;
+				entite = nullptr;
+			}
+		}
+	}
+	entites_.erase(std::remove(entites_.begin(), entites_.end(), nullptr), entites_.end());
+	animaux_.erase(std::remove(animaux_.begin(), animaux_.end(), nullptr), animaux_.end());
+	fromages_.erase(std::remove(fromages_.begin(), fromages_.end(), nullptr), fromages_.end());
+}
+
+void Lab::reset()
+{
+	/*animaux_.erase(std::remove(animaux_.begin(), animaux_.end(), nullptr), animaux_.end());
+	fromages_.erase(std::remove(fromages_.begin(), fromages_.end(), nullptr), fromages_.end());
+	entites_.erase(std::remove(entites_.begin(), entites_.end(), nullptr), entites_.end());*/
+	for(auto& entite : entites_)
+	{
+		if (entite != nullptr) {
+			delete entite;
+		}
+	}
+	entites_.clear();
+	fromages_.clear();
+	animaux_.clear();
+}
+
+void Lab::makeBoxes(unsigned int nbCagesPerRow)
+{
+	double largeurBoite(getApp().getLabSize().x/nbCagesPerRow);
+	double hauteurBoite(getApp().getLabSize().y/nbCagesPerRow);
+
+	if(nbCagesPerRow == 0)
+	{
+		throw std::invalid_argument("Il n'y a pas de boites !");
+	} else {
+		for (unsigned int i(0); i<nbCagesPerRow; ++i) {
+			lab_.push_back(vector<Box*>(0));
+			for (unsigned int j(0); j<nbCagesPerRow; ++j) {
+				lab_[i].push_back(new Box({(0.5+i)*largeurBoite, (0.5+j)*hauteurBoite}, largeurBoite, hauteurBoite, 0.025*largeurBoite));
+			}
+		}
+	}   
+}
+
+
+void Lab::drawOn(sf::RenderTarget& targetWindow) 
+{
+	for (auto ligne :lab_) {
+		for (auto boites: ligne) {
+
+			sf::RectangleShape Top = buildRectangle(boites->getTop().second, boites->getTop().first, &getAppTexture(getAppConfig().simulation_lab_fence));
+			targetWindow.draw(Top);
+
+			sf::RectangleShape Right = buildRectangle(boites->getRight().second, boites->getRight().first, &getAppTexture(getAppConfig().simulation_lab_fence));
+			targetWindow.draw(Right);
+
+			sf::RectangleShape Bottom = buildRectangle(boites->getBottom().second, boites->getBottom().first, &getAppTexture(getAppConfig().simulation_lab_fence));
+			targetWindow.draw(Bottom);
+
+			sf::RectangleShape Left = buildRectangle(boites->getLeft().second, boites->getLeft().first, &getAppTexture(getAppConfig().simulation_lab_fence));
+			targetWindow.draw(Left);
+		}
+	}
+	for(const auto& cheese: fromages_) {
+		if (cheese != nullptr) {
+			cheese->drawOn(targetWindow); //dessiner le Lab c'est dessiner chacune de ses entités
+		} 
+	}
+	for(const auto& animal : animaux_) {
+		if(animal != nullptr) {
+			animal->drawOn(targetWindow);
+			if(animal==trackedAnimal_){
+				trackedAnimal_->dessinerTracked(targetWindow);
+				//updateTrackedAnimal();
+			}
+		}
+	}
+}
+
+bool Lab::addAnimal(Animal* animal)
+{	
+	bool entityAdded = addEntity(animal);
+	if(animal != nullptr and entityAdded)
+	{
+		animaux_.push_back(animal);	
+	}
+	return entityAdded;
+}
+
+bool Lab::addCheese(Cheese* cheese) 
+{
+	bool entityAdded = addEntity(cheese);
+	if(cheese != nullptr and entityAdded)
+	{
+		fromages_.push_back(cheese);
+	}
+	return entityAdded;
+}
+
+bool Lab::addEntity(SimulatedEntity* entite)
+{	
+	if(entite == nullptr) {
+		return false;
+	}
+
+	Box* box = TheBoxOf(entite);
+
+	if (box == nullptr or !box->isPositionInside(entite->getCenter()) or !entite->canBeConfinedIn(box))
+	{
+		delete entite; //if we couldn't add the entity, delete it !!
+		return false;
+	}
+
+	entites_.push_back(entite); //si toutes les conditions ci-dessus ne sont pas satisfaites, on ajoute l'entite au tableau d'entites
+	entite->setBox(box); //on affecte à l'attribut boite de l'entite sa boite
+	entite->adjustPosition(); //on ajuste sa position
+	return true;
+}
+
+Box* Lab::TheBoxOf(SimulatedEntity* entite)
+{
+	Box* findBox = nullptr;
+
+	if(entite == nullptr) {
+		return findBox;
+	}
+
+	for(auto lignes : lab_) {
+		for(auto boite : lignes)
+		{
+			if(boite->isPositionInside(entite->getCenter())) { //si l'entite est dans la boite, c'est que cette boite lui correspond
+				findBox = boite;
+			}
+		}
+	}
+	return findBox;
+}    
+
+SimulatedEntity* Lab::FindTargetInSight(Animal* animal)
+{
+	SimulatedEntity* nearestEntity(nullptr);
+	double positionMin(1000);
+	if(animal != nullptr)
+	{
+		for(auto& entite : entites_)
+		{
+			if(entite != nullptr)
+			{
+				if(animal->isTargetInSight(entite->getCenter()) and animal->eatable(entite)) //si la cible est vue de l'animal et si elle est mangeable par lui
+				{
+					double Min(sqrt((entite->getCenter()- animal->getCenter()).lengthSquared())); //on initialise à Min la distance entre cible et animal
+					if(Min < positionMin) 
+					{
+						positionMin = Min; //on cherche la plus petite distance
+						nearestEntity = entite;
+					}
+				}
+			}
+		}
+	}
+	return nearestEntity; //et on retourne l'entite la plus proche !!
+}
+
+/*Cette méthode traque un animal par rapport à une certaine position. 
+ * Dans notre cas, la position passée en paramètre va notamment être la position de notre curseur.*/
+void Lab::trackAnimal(const Vec2d& position)
+{
+    for (auto animal: animaux_) {
+        if ((sqrt((animal->getPosition()-position).lengthSquared())<=animal->getRadius()))
+        {
+            trackAnimal(animal);
+        }
+    }
+}
+ 
+/*Cette méthode est un setter de notre attribut "trackedAnimal_"*/
+void Lab:: trackAnimal(Animal*animal)
+{
+    if (animal!=nullptr) {
+        trackedAnimal_=animal;
+    }
+}
+ 
+/*cette méthode permet de passer de la vue externe (du lab) à la vue interne (celle de l'organe)*/
+void Lab::switchToView(View view)
+{
+    if (trackedAnimal_!=nullptr) {
+    getApp().switchToView(view);
+    }
+}
+ 
+/*cette méthode sert à indiquer que plus aucun individu n'est traqué.*/
+void Lab::stopTrackingAnyEntity() 
+{
+    trackedAnimal_=nullptr; 
+}
+     
+/*méthode qui permet de faire évoluer l'organe de notre animal traqué*/
+void Lab::updateTrackedAnimal()
+{
+    trackedAnimal_->updateOrgan();
+}
+ 
+/*méthode qui permet de dessiner l'organe de notre animal traqué, s'il existe*/
+void Lab::drawCurrentOrgan(sf::RenderTarget& targetWindow)
+{
+    trackedAnimal_->drawOrgan(targetWindow);
+}
+

@@ -1,0 +1,26 @@
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include <Application.hpp>
+#include <vector>
+using namespace std;
+
+typedef vector<vector<*Box>> Laboratoire;
+
+class Lab{
+	
+public:
+
+Lab();
+
+void update(sf::Time dt); //fait évoluer le contenu de chaque boite au cours du temps, après dt
+
+void drawOn(sf::RenderTarget& targetWindow); //dessine le contenu du labo
+
+void reset(); //vide toutes les boites de leur contenu
+
+void makeBoxes(unsigned int nbCagesPerRow); /* permet de quadriller le lab avec 
+nb donne de boites par ligne*/
+
+void destroyBoxes(); // supprime toutes les boites du laboratoire (tab devient vide)
+
+};

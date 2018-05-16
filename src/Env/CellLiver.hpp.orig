@@ -1,0 +1,13 @@
+#ifndef CELLLIVER_HPP
+#define CELLLIVER_HPP
+#include "CellOrgan.hpp"
+#include "Substance.hpp"
+#include <SFML/Graphics.hpp>
+
+class CellLiver : public CellOrgan {
+protected:
+public:
+	CellLiver(CellHandler* cellHandler); 
+};
+
+#endif

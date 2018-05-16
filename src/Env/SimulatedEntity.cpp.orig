@@ -1,0 +1,109 @@
+#include "SimulatedEntity.hpp"
+#include <Application.hpp>
+#include <Random/Random.hpp>
+#include <cmath>
+#include <Config.hpp>
+#include <Utility/Vec2d.hpp>
+#include <SFML/Graphics.hpp>
+#include <Utility/Constants.hpp>
+#include <Random/RandomGenerator.hpp>
+#include <string>
+#include <Utility/Utility.hpp>
+#include "Box.hpp"
+#include "Cheese.hpp"
+#include "Mouse.hpp"
+using namespace std;
+  
+//----CONSTRUCTEUR----//
+SimulatedEntity::SimulatedEntity(double energie, Vec2d position, sf::Texture texture)
+:energie_(energie), 
+position_(position), 
+anglerad_(uniform(Angle(0), TAU) ), 
+age_(sf::Time::Zero), 
+box_(nullptr), 
+texture_(texture)
+{}
+ 
+//----DESTRUCTEUR----//
+SimulatedEntity::~SimulatedEntity()
+{
+    box_=nullptr;
+    delete box_;
+     
+}
+ 
+/*cette fonction fait "viellir notre entité d'un certain temps "dt"à chaque pas de notre simulation*/
+void SimulatedEntity::update(sf::Time dt) 
+{
+    age_+=dt; 
+}
+/*getter qui retourne la position de l'entité*/
+Vec2d SimulatedEntity::getCenter() const
+{
+    return position_;
+}
+/*dessin d'une entité*/
+void SimulatedEntity::drawOn(sf::RenderTarget& target)
+{
+     
+    sf::Sprite entite = buildSprite(position_, 2*getRadius(), texture_);
+    entite.setRotation(anglerad_/ DEG_TO_RAD); 
+    target.draw(entite);
+    dessiner(target);
+      
+    /*si le mode debug est activé, on affiche son niveau d'énergie à l'aide d'un texte*/
+    if (isDebugOn()) {
+        string un_texte;
+        un_texte=to_nice_string(energie_);
+        auto text = buildText(un_texte, position_, getAppFont(), getAppConfig().default_debug_text_size, 
+          sf::Color::Blue);
+  
+    text.setRotation(anglerad_/DEG_TO_RAD + 90);
+    target.draw(text);
+    } 
+}
+/*méthode qui contrôle si une entité est morte*/
+bool SimulatedEntity::isdead()const
+{
+    /*l'entité est considérée comme morte si son énergie est inférieure à 0*/
+    if (energie_<=0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+ 
+/*ajuste la position de l'entité, par rapport à sa proximité du mur*/
+void SimulatedEntity::adjustPosition()
+{
+    /*Si l'entité est trop proche(sa postion-son rayon inférieur au bord du mur) du mur,on décale sa position.*/
+          auto topWall(box_->getTopLimit(true));
+         if (getCenter().y - getRadius() < topWall)  
+         (position_.y = topWall + getRadius() * 1.25);
+            
+         auto LeftWall(box_->getLeftLimit(true));
+         if (getCenter().x - getRadius() < LeftWall)  
+         (position_.x = LeftWall + getRadius() * 1.25);
+            
+         auto RightWall(box_->getRightLimit(true));
+         if (getCenter().x + getRadius() > RightWall) 
+         (position_.x = RightWall - getRadius() * 1.25);
+            
+         auto BottomWall(box_->getBottomLimit(true));
+         if (getCenter().y + getRadius() > BottomWall) 
+         (position_.y = BottomWall - getRadius() * 1.25);
+}
+ 
+/*méthode qui retourne le vecteur direction normalisé de l'entité*/
+Vec2d SimulatedEntity::getHeading()
+{
+    Vec2d VecteurOrientation(Vec2d::fromAngle(anglerad_));
+    double normeVecteurOrientation(sqrt(pow(VecteurOrientation.x, 2))+ (pow(VecteurOrientation.y, 2)));
+    return VecteurOrientation/normeVecteurOrientation;
+}
+ 
+/*méthode qui attribue une boîte à notre attribut box_*/
+void SimulatedEntity::setBox(Box* boite)
+{
+    box_ = boite;
+}

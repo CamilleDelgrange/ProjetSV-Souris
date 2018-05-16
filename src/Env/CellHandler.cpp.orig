@@ -1,0 +1,118 @@
+#include "CellHandler.hpp"
+#include "CellECM.hpp"
+#include "CellLiver.hpp"
+#include "CellBlood.hpp"
+#include "CellOrgan.hpp"
+#include "Organ.hpp"
+#include "Substance.hpp"
+#include <SFML/Graphics.hpp>
+#include <Application.hpp>
+
+using namespace std;
+
+CellHandler::CellHandler(CellCoord positionLogique, Organ* organ)
+: positionGrille_(positionLogique)
+, cellLiver_(nullptr)
+, cellBlood_(nullptr)
+, organ_(organ)
+{
+	cellECM_ = new CellECM(this);
+}
+
+bool CellHandler::hasECM()
+{
+	return (cellECM_ != nullptr);
+}
+
+bool CellHandler::hasLiver()
+{
+	return (cellLiver_ != nullptr);
+}
+
+bool CellHandler::hasBlood()
+{
+	return (cellBlood_ != nullptr);
+}
+
+/*Des «setters» void setECM(), void setLiver() et setBlood(TypeBloodCell) permettant de donner 
+une valeur aux attributs de type CellECM*, CellLiver* et CellBlood*. La valeur sera allouée dynamiquement
+ et ne sera attribuée que s'il n'existait pas de cellule au préalable (cellule valant nullptr). */
+
+ void CellHandler::setECM() //donner une valeur à cellECM_ si elle est différente de nullptr
+ {
+ 	if(!hasECM())
+ 	{
+ 		cellECM_ = new CellECM(this);
+ 	}
+ }
+
+ void CellHandler::setBlood(TypeBloodCell typeBloodCell) //donner une valeur à cellBlood_ si elle est différente de nullptr
+ {
+ 	if(!hasBlood())
+ 	{
+ 		cellBlood_ = new CellBlood(this, typeBloodCell);
+ 		organ_->updateRepresentation();
+ 	}
+ }
+
+ void CellHandler::setLiver() //donner une valeur à cellLiver_ si elle est différente de nullptr
+ {
+ 	if(!hasLiver())
+ 	{
+ 		cellLiver_ = new CellLiver(this);
+ 		organ_->updateRepresentation();
+ 	}
+ }
+
+ CellHandler::~CellHandler()
+ {
+ 	if(cellECM_ == nullptr && cellLiver_ == nullptr && cellBlood_ == nullptr)
+ 	{
+ 		delete cellECM_;
+ 		delete cellBlood_;
+ 		delete cellLiver_;
+ 	}
+}
+
+void CellHandler::updateSubstance(Substance& substance)
+{
+ 	cellECM_->addSubstance(substance);
+}
+
+double CellHandler::getECMQuantity(SubstanceId id)
+{
+ 	return cellECM_->getQuantity(id);
+}
+
+double CellHandler::getLiverQuantity(SubstanceId id)
+{
+	if(cellLiver_ == nullptr)
+	{
+		return 0.0;
+	} else {
+		return cellLiver_->getQuantity(id);
+	}
+}
+
+double CellHandler::getBloodQuantity(SubstanceId id)
+{
+	if(cellBlood_ == nullptr)
+	{
+		return 0.0;
+	} else {
+		return cellBlood_->getQuantity(id);
+	}
+}
+
+void CellHandler::liverTakeFromEcm(SubstanceId id, double fraction)
+{
+	if(cellLiver_ != nullptr)
+	{
+		cellECM_->ecmUptakeOnGradient(fraction, cellLiver_, id);
+	}
+}
+
+bool CellHandler::isOut(const CellCoord& coord)
+{
+	return organ_->isOut(coord);
+}
